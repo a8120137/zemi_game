@@ -1,0 +1,274 @@
+// エンティティ関連の関数----------------
+
+// 全エンティティ共通
+function updatePosition(entity) {
+  entity.x += entity.vx;
+  entity.y += entity.vy;
+}
+
+//プレイヤーエンティティ
+function createPlayer() {
+  return {
+    x: 200,
+    y: 300,
+    vx: 0,
+    vy: 0
+  };
+}
+
+function applyGravity(entity) {
+  entity.vy += 0.25;
+}
+
+function applyJump(entity) {
+  entity.vy = -7;
+}
+
+function drawPlayer(entity) {
+  noStroke();
+  fill("#3cb371");
+  square(entity.x, entity.y, 40, 8);
+}
+
+function playerIsAlive(entity) {
+  return entity.y < 600;
+}
+
+function createBlock(y) {
+  return {
+    x: 900,
+    y,
+    vx: -2,
+    vy: 0
+  };
+}
+
+function drawBlock(entity) {
+  noStroke();
+  fill("#5f6caf")
+  rect(entity.x, entity.y, 81, 400, 8);
+}
+
+function blockIsAlive(entity) {
+  return -100 < entity.x;
+}
+
+
+function createItem(y) {
+  return {
+    x: 900,
+    y,
+    vx: -2,
+    vy: 0
+  };
+}
+
+function drawItem(entity) {
+  noStroke();
+  fill("#ffffff")
+  rect(entity.x, entity.y, 81, 80, 8);
+  // + Math.floor(Math.random() * 100)
+}
+
+function itemIsAlive(entity) {
+  return -100 < entity.x;
+}
+
+
+
+function entitiesAreColliding(
+  entityA,
+  entityB,
+  collisionXDistance,
+  collisionYDistance
+) {
+
+
+  let currentXDistance = abs(entityA.x - entityB.x);
+  if (collisionXDistance <= currentXDistance) return false;
+
+  let currentYDistance = abs(entityA.y - entityB.y);
+  if (collisionYDistance <= currentYDistance) return false;
+
+  return true;
+}
+
+// ゲーム全体にかかわる部分-----------------
+
+//音楽
+let sound;
+function preload() {
+  sound = loadSound("kirby.mp3");//サウンド読み込み
+}
+
+
+// //加えた部分
+// // スコア
+// let sco = 0;
+
+// function createScore() {
+//   fill(255);
+//   textSize(20);
+//   text("SCORE" + sco, 500, 20);
+// }
+// function score() {
+//   sco = sco + 10;
+// }
+
+// let sco = 0;
+
+function score() {
+  if (gameState === "play") {
+    fill(255);
+    textSize(20);
+    text('score' + sco, 500, 20);
+    sco = sco - 5;
+  } else {
+    fill(255);
+    textSize(100);
+    text('score' + sco, 300, 200);
+  }
+
+
+}
+
+// プレイヤーエンティティ
+let player = {
+  x: 200,
+  y: 300,
+  vx: 0,
+  vy: 0
+};
+
+let blocks;
+
+let items;
+
+let gameState;
+
+
+function addBlockPair() {
+  let y = random(-100, 100);
+  blocks.push(createBlock(y));
+  blocks.push(createBlock(y + 600));
+}
+
+//いらない？
+function addItemPair() {
+  let y = random(200, 400);
+  items.push(createItem(y));
+  // items.push(createItem(y + 600));
+}
+
+function drawGameoverScreen() {
+  background(0, 192);
+  fill(255);
+  textSize(64);
+  textAlign(CENTER, CENTER);
+  text("GAME OVER", width / 2, height / 2);
+}
+
+function resetGame() {
+  gameState = "play";
+  player = createPlayer();
+  blocks = [];
+  items = [];
+  sco = 5000;
+
+
+}
+
+function updateGame() {
+  if (gameState === "gameover") return;
+
+  if (frameCount % 120 === 1) addBlockPair(blocks);
+  blocks = blocks.filter(blockIsAlive);
+
+  if (frameCount % 120 === 1) addItemPair(items);
+  items = items.filter(itemIsAlive);
+
+  //プレイヤーの位置を更新
+  updatePosition(player);
+  for (let block of blocks) updatePosition(block);
+  for (let item of items) updatePosition(item);
+
+  //プレイヤーに重力を適用
+  applyGravity(player);
+
+  if (!playerIsAlive(player)) gameState = "gameover"
+
+  for (let block of blocks) {
+    if (entitiesAreColliding(player, block, 20 + 40, 20 + 200)) {
+      gameState = "gameover";
+      break;
+    }
+  }
+
+  for (let item of items) {
+    if (entitiesAreColliding(player, item, 20 + 40, 20 + 40)) {
+      sco = sco + 50;
+      break;
+    }
+  }
+}
+
+function drawGame() {
+  //プレイヤーを描画
+  background(100);
+  drawPlayer(player);
+
+  for (let block of blocks) drawBlock(block);
+
+  for (let item of items) drawItem(item);
+
+  if (gameState === "gameover") drawGameoverScreen();
+}
+
+function onMousePress() {
+  applyJump(player);
+
+  switch (gameState) {
+    case "play":
+      applyJump(player);
+      break;
+    case "gameover":
+      resetGame();
+      break;
+  }
+}
+
+
+// setup/draw他----------------------
+
+
+function setup() {
+  createCanvas(800, 600); // 800 x 600 ピクセル。今回このサイズでやっていきます
+  background(200);
+  rectMode(CENTER);  //四角形の基準点を角から中心に変える
+  resetGame();
+  sound.play();//サウンドファイルの再生
+}
+
+function draw() {
+
+
+
+  updateGame();
+
+  drawGame();
+  score();
+
+
+
+
+}
+
+function mousePressed(){
+  onMousePress();
+
+  // if(sound.isPlaying()){
+  //   sound.pause();
+  // } else {
+  //   sound.play();
+  // }
+}
